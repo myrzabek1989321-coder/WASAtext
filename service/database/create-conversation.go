@@ -14,11 +14,14 @@ var ErrRecipientNotFound = errors.New("recipient not found")
 var ErrInvalidRecipient = errors.New("invalid recipient")
 
 type ConversationSummary struct {
-	ID      string `json:"id"`
-	Type    string `json:"type"`
-	Name    string `json:"name"`
-	Photo   *Photo `json:"photo,omitempty"`
-	Members []User `json:"members"`
+	ID                 string `json:"id"`
+	Type               string `json:"type"`
+	Name               string `json:"name"`
+	Photo              *Photo `json:"photo,omitempty"`
+	Members            []User `json:"members"`
+	LastMessageAt      string `json:"lastMessageAt,omitempty"`
+	LastMessagePreview string `json:"lastMessagePreview,omitempty"`
+	LastMessageType    string `json:"lastMessageType,omitempty"`
 }
 
 func (db *appdbimpl) CreateConversation(authID, recipientID string) (ConversationSummary, error) {

@@ -24,14 +24,35 @@ func (db *appdbimpl) GetMyConversations(authID string) ([]ConversationSummary, e
 
 	// find conversations where this user is a member
 	rows, err := db.c.Query(
-		`SELECT c.id, c.type, COALESCE(c.name, '')
-         FROM conversations c
-         JOIN conversation_members cm
-             ON cm.conversation_id = c.id
-         WHERE cm.user_id = ?
-         ORDER BY c.created_at DESC, c.id DESC`,
+		`SELECT
+	        c.id,
+	        c.type,
+	        COALESCE(c.name, ''),
+	        COALESCE(m.created_at, ''),
+	        COALESCE(m.type, ''),
+	        CASE
+	            WHEN m.type = 'photo' THEN '[Photo]'
+	            ELSE COALESCE(m.text_content, '')
+	        END
+	     FROM conversations c
+	     JOIN conversation_members cm
+	         ON cm.conversation_id = c.id
+	     LEFT JOIN messages m ON m.id = (
+	         SELECT m2.id
+	         FROM messages m2
+	         WHERE m2.conversation_id = c.id
+	         ORDER BY m2.created_at DESC, m2.id DESC
+	         LIMIT 1
+	     )
+	     WHERE cm.user_id = ?
+	     ORDER BY
+	         (m.created_at IS NULL) ASC,
+	         m.created_at DESC,
+	         c.created_at DESC,
+	         c.id DESC`,
 		authID,
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("get conversations: %w", err)
 	}
@@ -45,7 +66,11 @@ func (db *appdbimpl) GetMyConversations(authID string) ([]ConversationSummary, e
 			&conversation.ID,
 			&conversation.Type,
 			&conversation.Name,
+			&conversation.LastMessageAt,
+			&conversation.LastMessageType,
+			&conversation.LastMessagePreview,
 		)
+
 		if err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("read conversation: %w", err)
