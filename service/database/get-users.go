@@ -3,6 +3,7 @@
 package database
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 )
@@ -32,9 +33,10 @@ func (db *appdbimpl) GetUsers(authID, search string) ([]User, error) {
 
 	// Find users matching the provided search text.
 	rows, err := db.c.Query(
-		`SELECT id, name FROM users
-         WHERE instr(lower(name), lower(?)) > 0
-         ORDER BY name COLLATE NOCASE`,
+		`SELECT id, name, photo_mime_type, photo_data
+ 		FROM users
+ 		WHERE instr(lower(name), lower(?)) > 0
+ 		ORDER BY name COLLATE NOCASE`,
 		search,
 	)
 	if err != nil {
@@ -46,9 +48,23 @@ func (db *appdbimpl) GetUsers(authID, search string) ([]User, error) {
 
 	for rows.Next() {
 		var user User
+		var mimeType sql.NullString
+		var photoData []byte
 
-		if err := rows.Scan(&user.ID, &user.Name); err != nil {
+		if err := rows.Scan(
+			&user.ID,
+			&user.Name,
+			&mimeType,
+			&photoData,
+		); err != nil {
 			return nil, fmt.Errorf("read user: %w", err)
+		}
+
+		if mimeType.Valid && len(photoData) > 0 {
+			user.Photo = &Photo{
+				MimeType: mimeType.String,
+				Data:     photoData,
+			}
 		}
 
 		users = append(users, user)
