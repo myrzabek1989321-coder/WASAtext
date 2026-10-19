@@ -42,7 +42,7 @@ func (db *appdbimpl) GetUsers(authID, search string) ([]User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query users: %w", err)
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 
 	users := make([]User, 0)
 

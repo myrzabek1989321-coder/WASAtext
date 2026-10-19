@@ -98,7 +98,7 @@ func (db *appdbimpl) GetMyConversations(authID string) ([]ConversationSummary, e
 		)
 
 		if err != nil {
-			rows.Close()
+			closeRows(rows)
 			return nil, fmt.Errorf("read conversation: %w", err)
 		}
 
@@ -116,7 +116,7 @@ func (db *appdbimpl) GetMyConversations(authID string) ([]ConversationSummary, e
 	}
 
 	if err := rows.Err(); err != nil {
-		rows.Close()
+		closeRows(rows)
 		return nil, fmt.Errorf("iterate conversations: %w", err)
 	}
 	if err := rows.Close(); err != nil {
@@ -152,7 +152,7 @@ func (db *appdbimpl) GetMyConversations(authID string) ([]ConversationSummary, e
 				&photoData,
 			)
 			if err != nil {
-				memberRows.Close()
+				closeRows(memberRows)
 				return nil, fmt.Errorf("read member: %w", err)
 			}
 
@@ -175,7 +175,7 @@ func (db *appdbimpl) GetMyConversations(authID string) ([]ConversationSummary, e
 		}
 
 		if err := memberRows.Err(); err != nil {
-			memberRows.Close()
+			closeRows(memberRows)
 			return nil, fmt.Errorf("iterate members: %w", err)
 		}
 		if err := memberRows.Close(); err != nil {

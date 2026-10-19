@@ -154,7 +154,7 @@ func (db *appdbimpl) CreateConversation(authID, recipientID string) (Conversatio
 			&user.ID, &user.Name, &mimeType, &photoData,
 		)
 		if err != nil {
-			rows.Close()
+			closeRows(rows)
 			return ConversationSummary{}, err
 		}
 
@@ -174,7 +174,7 @@ func (db *appdbimpl) CreateConversation(authID, recipientID string) (Conversatio
 	}
 
 	if err := rows.Err(); err != nil {
-		rows.Close()
+		closeRows(rows)
 		return ConversationSummary{}, err
 	}
 	if err := rows.Close(); err != nil {

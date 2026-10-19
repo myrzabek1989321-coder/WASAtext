@@ -26,7 +26,9 @@ func (db *appdbimpl) CreateGroup(
 	if err != nil {
 		return ConversationSummary{}, fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// 1. Check that the creator exists
 	var exists int
@@ -137,7 +139,7 @@ func (db *appdbimpl) CreateGroup(
 			&photoData,
 		)
 		if err != nil {
-			rows.Close()
+			closeRows(rows)
 			return ConversationSummary{}, fmt.Errorf("read group member: %w", err)
 		}
 
@@ -152,7 +154,7 @@ func (db *appdbimpl) CreateGroup(
 	}
 
 	if err := rows.Err(); err != nil {
-		rows.Close()
+		closeRows(rows)
 		return ConversationSummary{}, fmt.Errorf("iterate group members: %w", err)
 	}
 

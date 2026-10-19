@@ -75,7 +75,7 @@ func (db *appdbimpl) GetConversation(authID, conversationID string) (Conversatio
 	if err != nil {
 		return result, fmt.Errorf("get messages: %w", err)
 	}
-	defer rows.Close()
+	defer closeRows(rows)
 
 	result.Messages = make([]Message, 0)
 
@@ -181,7 +181,7 @@ func (db *appdbimpl) GetConversation(authID, conversationID string) (Conversatio
 	if err != nil {
 		return result, fmt.Errorf("get reactions: %w", err)
 	}
-	defer reactionRows.Close()
+	defer closeRows(reactionRows)
 
 	for reactionRows.Next() {
 		var messageID string
