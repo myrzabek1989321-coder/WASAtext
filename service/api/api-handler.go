@@ -30,6 +30,8 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.Get("/conversations/{conversationId}", rt.getConversation)
 	rt.router.Post("/messages/{messageId}/comments", rt.commentMessage)
 	rt.router.Delete("/messages/{messageId}/comments", rt.uncommentMessage)
+	rt.router.Delete("/messages/{messageId}", rt.deleteMessage)
+	rt.router.Post("/messages/{messageId}/forward", rt.forwardMessage)
 
 	return rt.router
 }

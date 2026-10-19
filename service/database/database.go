@@ -42,6 +42,8 @@ type AppDatabase interface {
 	GetConversation(authID, conversationID string) (ConversationDetail, error)
 	CommentMessage(authID, messageID, emoticon string) (Reaction, error)
 	UncommentMessage(authID, messageID string) error
+	DeleteMessage(authID, messageID string) error
+	ForwardMessage(authID, sourceMessageID, targetConversationID string) (Message, error)
 
 	Ping() error
 }
