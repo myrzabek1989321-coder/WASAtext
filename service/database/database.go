@@ -36,6 +36,8 @@ type AppDatabase interface {
 	GetUsers(authID, search string) ([]User, error)
 	SetMyUserName(authID, name string) (User, error)
 	SetMyPhoto(authID string, photo Photo) (User, error)
+	CreateConversation(authID, recipientID string) (ConversationSummary, error)
+	GetMyConversations(authID string) ([]ConversationSummary, error)
 
 	Ping() error
 }
