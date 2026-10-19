@@ -18,7 +18,7 @@ CREATE TABLE message_receipts (
     CHECK (read_at IS NULL OR delivered_at IS NOT NULL)
 );
 
--- Include messages created before this migration
+-- include messages created before this migration
 INSERT INTO message_receipts (message_id, user_id)
 SELECT m.id, cm.user_id
 FROM messages m

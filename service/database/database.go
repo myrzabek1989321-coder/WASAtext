@@ -40,6 +40,8 @@ type AppDatabase interface {
 	GetMyConversations(authID string) ([]ConversationSummary, error)
 	SendMessage(authID, conversationID string, input SendMessageInput) (Message, error)
 	GetConversation(authID, conversationID string) (ConversationDetail, error)
+	CommentMessage(authID, messageID, emoticon string) (Reaction, error)
+	UncommentMessage(authID, messageID string) error
 
 	Ping() error
 }
