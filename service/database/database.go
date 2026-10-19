@@ -38,6 +38,8 @@ type AppDatabase interface {
 	SetMyPhoto(authID string, photo Photo) (User, error)
 	CreateConversation(authID, recipientID string) (ConversationSummary, error)
 	GetMyConversations(authID string) ([]ConversationSummary, error)
+	SendMessage(authID, conversationID string, input SendMessageInput) (Message, error)
+	GetConversation(authID, conversationID string) (ConversationDetail, error)
 
 	Ping() error
 }
