@@ -35,6 +35,7 @@ type AppDatabase interface {
 	LoginUser(name string) (string, error)
 	GetUsers(authID, search string) ([]User, error)
 	SetMyUserName(authID, name string) (User, error)
+	SetMyPhoto(authID string, photo Photo) (User, error)
 
 	Ping() error
 }

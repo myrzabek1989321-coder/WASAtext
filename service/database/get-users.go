@@ -10,8 +10,9 @@ import (
 var ErrUnknownUser = errors.New("unknown user")
 
 type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Photo *Photo `json:"photo,omitempty"`
 }
 
 func (db *appdbimpl) GetUsers(authID, search string) ([]User, error) {

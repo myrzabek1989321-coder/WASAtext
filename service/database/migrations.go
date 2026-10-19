@@ -15,6 +15,7 @@ import (
 // executable. The files are the single source of truth for the database schema.
 //
 //go:embed migrations/*.sql
+
 var migrationsFS embed.FS
 
 // Migrate applies all pending SQL migrations to db. It is safe to call at every
@@ -43,6 +44,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 	if err != nil {
 		return fmt.Errorf("listing embedded migrations: %w", err)
 	}
+
 	sort.Strings(files)
 
 	for _, file := range files {
