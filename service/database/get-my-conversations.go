@@ -44,15 +44,17 @@ func (db *appdbimpl) GetMyConversations(authID string) ([]ConversationSummary, e
 	// find conversations where this user is a member
 	rows, err := db.c.Query(
 		`SELECT
-	        c.id,
-	        c.type,
-	        COALESCE(c.name, ''),
-	        COALESCE(m.created_at, ''),
-	        COALESCE(m.type, ''),
-	        CASE
-	            WHEN m.type = 'photo' THEN '[Photo]'
-	            ELSE COALESCE(m.text_content, '')
-	        END
+    	 c.id,
+    	 c.type,
+    	 COALESCE(c.name, ''),
+    	 c.photo_mime_type,
+    	 c.photo_data,
+    	 COALESCE(m.created_at, ''),
+    	 COALESCE(m.type, ''),
+    	 CASE
+    	     WHEN m.type = 'photo' THEN '[Photo]'
+    	     ELSE COALESCE(m.text_content, '')
+    	 END
 	     FROM conversations c
 	     JOIN conversation_members cm
 	         ON cm.conversation_id = c.id
@@ -80,11 +82,16 @@ func (db *appdbimpl) GetMyConversations(authID string) ([]ConversationSummary, e
 
 	for rows.Next() {
 		var conversation ConversationSummary
+		// Group photo
+		var groupMime sql.NullString
+		var groupPhoto []byte
 
 		err := rows.Scan(
 			&conversation.ID,
 			&conversation.Type,
 			&conversation.Name,
+			&groupMime,
+			&groupPhoto,
 			&conversation.LastMessageAt,
 			&conversation.LastMessageType,
 			&conversation.LastMessagePreview,
@@ -95,7 +102,17 @@ func (db *appdbimpl) GetMyConversations(authID string) ([]ConversationSummary, e
 			return nil, fmt.Errorf("read conversation: %w", err)
 		}
 
+		if conversation.Type == "group" &&
+			groupMime.Valid && len(groupPhoto) > 0 {
+
+			conversation.Photo = &Photo{
+				MimeType: groupMime.String,
+				Data:     groupPhoto,
+			}
+		}
+
 		conversations = append(conversations, conversation)
+
 	}
 
 	if err := rows.Err(); err != nil {

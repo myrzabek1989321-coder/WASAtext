@@ -32,6 +32,11 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.Delete("/messages/{messageId}/comments", rt.uncommentMessage)
 	rt.router.Delete("/messages/{messageId}", rt.deleteMessage)
 	rt.router.Post("/messages/{messageId}/forward", rt.forwardMessage)
+	rt.router.Post("/groups", rt.createGroup)
+	rt.router.Post("/groups/{groupId}/members", rt.addToGroup)
+	rt.router.Delete("/groups/{groupId}/members/me", rt.leaveGroup)
+	rt.router.Put("/groups/{groupId}/name", rt.setGroupName)
+	rt.router.Put("/groups/{groupId}/photo", rt.setGroupPhoto)
 
 	return rt.router
 }

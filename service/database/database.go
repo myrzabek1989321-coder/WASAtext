@@ -44,6 +44,11 @@ type AppDatabase interface {
 	UncommentMessage(authID, messageID string) error
 	DeleteMessage(authID, messageID string) error
 	ForwardMessage(authID, sourceMessageID, targetConversationID string) (Message, error)
+	CreateGroup(authID, name string, memberIDs []string) (ConversationSummary, error)
+	AddToGroup(authID, groupID string, memberIDs []string) ([]User, error)
+	LeaveGroup(authID, groupID string) error
+	SetGroupName(authID, groupID, name string) (ConversationSummary, error)
+	SetGroupPhoto(authID, groupID string, photo Photo) (ConversationSummary, error)
 
 	Ping() error
 }
