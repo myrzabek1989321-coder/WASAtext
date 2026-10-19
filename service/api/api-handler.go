@@ -19,5 +19,10 @@ func (rt *_router) Handler() http.Handler {
 	// Special routes
 	rt.router.Get("/liveness", rt.liveness)
 
+	// New API to doLogin
+	rt.router.Post("/session", rt.doLogin)
+	rt.router.Get("/users", rt.getUsers)
+	rt.router.Put("/users/me/username", rt.setMyUserName)
+
 	return rt.router
 }

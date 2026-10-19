@@ -31,6 +31,11 @@ type AppDatabase interface {
 	GetName() (string, error)
 	SetName(name string) error
 
+	//new
+	LoginUser(name string) (string, error)
+	GetUsers(authID, search string) ([]User, error)
+	SetMyUserName(authID, name string) (User, error)
+
 	Ping() error
 }
 
