@@ -35,7 +35,9 @@ func (db *appdbimpl) CreateConversation(authID, recipientID string) (Conversatio
 	if err != nil {
 		return conversation, fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// Check that both users exist.
 	var exists int

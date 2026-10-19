@@ -15,7 +15,9 @@ func (db *appdbimpl) DeleteMessage(authID, messageID string) error {
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// 1. Check that the authenticated user exists
 	var userExists int

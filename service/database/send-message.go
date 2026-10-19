@@ -45,7 +45,10 @@ func (db *appdbimpl) SendMessage(
 	if err != nil {
 		return Message{}, err
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// find sender
 	var sender User

@@ -76,7 +76,9 @@ func (db *appdbimpl) CommentMessage(
 	if err != nil {
 		return Reaction{}, err
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	if err := checkReactionAccess(tx, authID, messageID); err != nil {
 		return Reaction{}, err
@@ -152,7 +154,10 @@ func (db *appdbimpl) UncommentMessage(
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	if err := checkReactionAccess(tx, authID, messageID); err != nil {
 		return err

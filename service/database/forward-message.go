@@ -17,7 +17,10 @@ func (db *appdbimpl) ForwardMessage(
 	if err != nil {
 		return Message{}, fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// 1. Find the authenticated user
 	var sender User
