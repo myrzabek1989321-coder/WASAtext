@@ -22,6 +22,25 @@ func (db *appdbimpl) GetMyConversations(authID string) ([]ConversationSummary, e
 		return nil, ErrUnknownUser
 	}
 
+	_, err = db.c.Exec(
+		`UPDATE message_receipts
+	     SET delivered_at = datetime('now')
+	     WHERE user_id = ?
+	       AND delivered_at IS NULL
+	       AND EXISTS (
+	           SELECT 1
+	           FROM messages m
+	           JOIN conversation_members cm
+	             ON cm.conversation_id = m.conversation_id
+	           WHERE m.id = message_receipts.message_id
+	             AND cm.user_id = ?
+	       )`,
+		authID, authID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("mark messages delivered: %w", err)
+	}
+
 	// find conversations where this user is a member
 	rows, err := db.c.Query(
 		`SELECT

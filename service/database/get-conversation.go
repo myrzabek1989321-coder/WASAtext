@@ -33,6 +33,21 @@ func (db *appdbimpl) GetConversation(authID, conversationID string) (Conversatio
 		return result, ErrConversationNotFound
 	}
 
+	_, err = db.c.Exec(
+		`UPDATE message_receipts
+	     SET delivered_at = COALESCE(delivered_at, datetime('now')),
+	         read_at = COALESCE(read_at, datetime('now'))
+	     WHERE user_id = ?
+	       AND message_id IN (
+	           SELECT id FROM messages
+	           WHERE conversation_id = ?
+	       )`,
+		authID, conversationID,
+	)
+	if err != nil {
+		return result, fmt.Errorf("mark messages read: %w", err)
+	}
+
 	// get messages, newest first
 	rows, err := db.c.Query(
 		`SELECT
@@ -40,8 +55,18 @@ func (db *appdbimpl) GetConversation(authID, conversationID string) (Conversatio
             m.photo_mime_type, m.photo_data,
             m.created_at, m.reply_to_message_id,
             m.forwarded_from_message_id,
-            u.id, u.name, u.photo_mime_type, u.photo_data
-         FROM messages m
+            u.id, u.name, u.photo_mime_type, u.photo_data, 
+		 NOT EXISTS (
+		    SELECT 1 FROM message_receipts mr
+		    WHERE mr.message_id = m.id
+		      AND mr.delivered_at IS NULL
+		  ),
+		 NOT EXISTS (
+		    SELECT 1 FROM message_receipts mr
+		    WHERE mr.message_id = m.id
+		      AND mr.read_at IS NULL
+		  )
+		 FROM messages m
          JOIN users u ON u.id = m.sender_id
          WHERE m.conversation_id = ?
          ORDER BY m.created_at DESC, m.id DESC`,
@@ -61,6 +86,9 @@ func (db *appdbimpl) GetConversation(authID, conversationID string) (Conversatio
 		var senderMime sql.NullString
 		var messagePhoto, senderPhoto []byte
 
+		var deliveredStatus int
+		var readStatus int
+
 		err := rows.Scan(
 			&message.ID,
 			&message.Type,
@@ -74,6 +102,8 @@ func (db *appdbimpl) GetConversation(authID, conversationID string) (Conversatio
 			&message.Sender.Name,
 			&senderMime,
 			&senderPhoto,
+			&deliveredStatus,
+			&readStatus,
 		)
 		if err != nil {
 			return result, fmt.Errorf("read message: %w", err)
@@ -107,6 +137,10 @@ func (db *appdbimpl) GetConversation(authID, conversationID string) (Conversatio
 		if forwarded.Valid {
 			message.ForwardedFromMessageID = forwarded.String
 		}
+
+		// set message delivery and read statuses
+		message.Delivered = deliveredStatus == 1
+		message.Read = readStatus == 1
 
 		result.Messages = append(result.Messages, message)
 	}

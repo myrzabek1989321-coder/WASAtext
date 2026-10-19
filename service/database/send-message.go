@@ -154,6 +154,17 @@ func (db *appdbimpl) SendMessage(
 		return Message{}, fmt.Errorf("save message: %w", err)
 	}
 
+	_, err = tx.Exec(
+		`INSERT INTO message_receipts (message_id, user_id)
+	     SELECT ?, user_id
+	     FROM conversation_members
+	     WHERE conversation_id = ? AND user_id != ?`,
+		messageID, conversationID, authID,
+	)
+	if err != nil {
+		return Message{}, fmt.Errorf("create message receipts: %w", err)
+	}
+
 	if err = tx.Commit(); err != nil {
 		return Message{}, err
 	}
