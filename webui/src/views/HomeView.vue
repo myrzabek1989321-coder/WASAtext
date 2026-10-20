@@ -10,6 +10,7 @@ export default {
             selectedId: null,
             messages: [],
             draft: '',
+            replyingTo: null,
 
             loading: false,
             loadingMessages: false,
@@ -95,6 +96,7 @@ export default {
         },
 
         async openConversation(conversation) {
+            this.replyingTo = null
             this.selectedId = conversation.id
             this.loadingMessages = true
 
@@ -113,38 +115,192 @@ export default {
                 this.loadingMessages = false
             }
         },
-
-        async sendMessage() {
-            const text = this.draft.trim()
-
-            if (!text || !this.selectedId || this.sending) {
-                return
+        
+        
+        startReply(message) {
+            this.replyingTo = {
+                id: message.id,
+                author: message.sender?.name || 'User',
+                preview: message.type === 'photo'
+                    ? '📷 Photo'
+                    : message.text || 'Message',
             }
-
-            this.sending = true
-
-            try {
-                await this.$axios.post(
-                    `/conversations/${encodeURIComponent(this.selectedId)}/messages`,
-                    {
-                        type: 'text',
-                        text: text,
-                    }
-                )
-
-                this.draft = ''
-
-                await this.openConversation({
-                    id: this.selectedId,
-                })
-
-                await this.loadConversations()
-            } catch (error) {
-                this.error = this.getErrorMessage(error)
-            } finally {
-                this.sending = false
-            }
+        
+            this.$nextTick(() => {
+                this.$refs.messageInput?.focus()
+            })
         },
+
+        cancelReply() {
+            this.replyingTo = null
+        },
+
+        getReplyAuthor(messageId) {
+            const original = this.messages.find(
+                (message) => message.id === messageId
+            )
+        
+            return original?.sender?.name || 'Original message'
+        },
+
+        getReplyPreview(messageId) {
+            const original = this.messages.find(
+                (message) => message.id === messageId
+            )
+        
+            if (!original) {
+                return 'Original message unavailable'
+            }
+        
+            return original.type === 'photo'
+                ? '📷 Photo'
+                : original.text || 'Message'
+        },
+
+
+        
+async sendMessage() {
+    const text = this.draft.trim()
+
+    if (!text || !this.selectedId || this.sending) {
+        return
+    }
+
+    const conversationId = this.selectedId
+
+    this.sending = true
+    this.error = ''
+
+    try {
+        const request = {
+            type: 'text',
+            text: text,
+        }
+
+        // Attach the original message ID when replying
+        if (this.replyingTo) {
+            request.replyToMessageId = this.replyingTo.id
+        }
+
+        await this.$axios.post(
+            `/conversations/${encodeURIComponent(conversationId)}/messages`,
+            request
+        )
+
+        this.draft = ''
+
+        if (this.selectedId === conversationId) {
+            this.replyingTo = null
+
+            await this.openConversation({
+                id: conversationId,
+            })
+        }
+
+        await this.loadConversations()
+    } catch (error) {
+        this.error = this.getErrorMessage(error)
+    } finally {
+        this.sending = false
+    }
+},
+
+        
+            
+    async sendPhoto(event) {
+        const input = event.target
+        const file = input.files?.[0]
+    
+        if (!file || !this.selectedId || this.sending) {
+            input.value = ''
+            return
+        }
+    
+        this.error = ''
+    
+        // API currently sends text and photos as separate message types
+        if (this.draft.trim()) {
+            this.error = 'Please send your text separately before uploading a photo.'
+            input.value = ''
+            return
+        }
+    
+        // Allow only JPEG, PNG, GIF
+        const allowedTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+        ]
+    
+        if (!allowedTypes.includes(file.type)) {
+            this.error = 'Only JPEG, PNG and GIF images are supported.'
+            input.value = ''
+            return
+        }
+    
+        // Client side safety limit for this first version
+        if (file.size > 5 * 1024 * 1024) {
+            this.error = 'The image must be smaller than 5 MB.'
+            input.value = ''
+            return
+        }
+    
+        this.sending = true
+        const conversationId = this.selectedId
+    
+        try {
+            // Convert image file into Base64 string 
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader()
+            
+                reader.onload = () => {
+                    const result = reader.result
+                
+                    if (typeof result !== 'string' || !result.includes(',')) {
+                        reject(new Error('Cannot read the selected image.'))
+                        return
+                    }
+                
+                    resolve(result.split(',')[1])
+                }
+            
+                reader.onerror = () => {
+                    reject(new Error('Cannot read the selected image.'))
+                }
+            
+                reader.readAsDataURL(file)
+            })
+        
+            // Send image using existing Go API
+            await this.$axios.post(
+                `/conversations/${encodeURIComponent(conversationId)}/messages`,
+                {
+                    type: 'photo',
+                    photo: {
+                        mimeType: file.type,
+                        data: base64,
+                    },
+                }
+            )
+            
+            // Refresh opened chat after sending
+            if (this.selectedId === conversationId) {
+                await this.openConversation({
+                    id: conversationId,
+                })
+            }
+        
+            await this.loadConversations()
+        } catch (error) {
+            this.error = error.response
+                ? `Photo upload failed (HTTP ${error.response.status}).`
+                : error.message || 'Cannot upload the photo.'
+        } finally {
+            this.sending = false
+            input.value = ''
+        }
+    },
+    
 
         logout() {
             localStorage.removeItem('wasa_identifier')
@@ -331,6 +487,20 @@ export default {
                                     {{ message.sender?.name }}
                                 </div>
 
+                                <!-- Original message preview -->
+                                <div
+                                    v-if="message.replyToMessageId"
+                                    class="border-start border-3 ps-2 mb-2 small"
+                                >
+                                    <div class="fw-semibold">
+                                        {{ getReplyAuthor(message.replyToMessageId) }}
+                                    </div>
+                                
+                                    <div class="text-truncate" style="max-width: 300px;">
+                                        {{ getReplyPreview(message.replyToMessageId) }}
+                                    </div>
+                                </div>
+
                                 <div v-if="message.text" class="text-break">
                                     {{ message.text }}
                                 </div>
@@ -351,6 +521,18 @@ export default {
                                     Reply
                                 </div>
 
+                                <button
+                                    type="button"
+                                    class="btn btn-link btn-sm p-0 mt-2 text-decoration-none"
+                                    :class="message.sender?.id === userId
+                                        ? 'text-white'
+                                        : 'text-primary'"
+                                    @click="startReply(message)"
+                                >
+                                    <i class="bi bi-reply me-1"></i>
+                                    Reply
+                                </button>
+
                                 <div
                                     v-if="message.sender?.id === userId"
                                     class="small opacity-75 text-end mt-1"
@@ -365,29 +547,92 @@ export default {
                         </div>
                     </div>
 
+                    
                     <div class="card-footer">
+
+                        <!-- Reply preview above message input -->
+                        <div
+                            v-if="replyingTo"
+                            class="d-flex align-items-center justify-content-between
+                                   border-start border-primary border-3
+                                   bg-body-secondary rounded p-2 mb-2"
+                        >
+                            <div class="overflow-hidden">
+                                <div class="small fw-semibold text-primary">
+                                    <i class="bi bi-reply me-1"></i>
+                                    Replying to {{ replyingTo.author }}
+                                </div>
+                            
+                                <div class="small text-body-secondary text-truncate">
+                                    {{ replyingTo.preview }}
+                                </div>
+                            </div>
+                        
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-secondary ms-2"
+                                title="Cancel reply"
+                                @click="cancelReply"
+                            >
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+
                         <form
                             class="d-flex gap-2"
                             @submit.prevent="sendMessage"
                         >
+                            <!-- Hidden file picker -->
+                            <input
+                                ref="photoInput"
+                                type="file"
+                                accept="image/jpeg,image/png,image/gif"
+                                class="d-none"
+                                @change="sendPhoto"
+                            />
+                    
+                            <!-- Upload photo button -->
+                            <button
+                                type="button"
+                                class="btn btn-outline-primary"
+                                title="Send a photo"
+                                :disabled="!selectedId || sending"
+                                @click="$refs.photoInput.click()"
+                            >
+                                <i class="bi bi-image"></i>
+                            </button>
+                        
+                            <!-- Text message -->
                             <input
                                 v-model="draft"
+                                ref="messageInput"
                                 type="text"
                                 class="form-control"
                                 placeholder="Type a message..."
                                 :disabled="!selectedId || sending"
                             />
-
+                        
+                            <!-- Send text button -->
                             <button
                                 type="submit"
                                 class="btn btn-primary"
                                 :disabled="!selectedId || !draft.trim() || sending"
                             >
-                                <i class="bi bi-send"></i>
-                                Send
+                                <span
+                                    v-if="sending"
+                                    class="spinner-border spinner-border-sm"
+                                ></span>
+                        
+                                <template v-else>
+                                    <i class="bi bi-send"></i>
+                                    Send
+                                </template>
                             </button>
                         </form>
                     </div>
+
+
+
                 </div>
             </div>
         </div>
