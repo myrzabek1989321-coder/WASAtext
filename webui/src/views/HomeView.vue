@@ -154,14 +154,29 @@ export default {
     },
 
     
-	mounted() {
-	    this.loadConversations()
+    
+    async mounted() {
+        await this.loadConversations()
 
-	    // Automatically update conversations every 3 seconds
-	    this.refreshTimer = window.setInterval(() => {
-	        this.autoRefresh()
-	    }, 3000)
-	},
+        // Check whether conversation were selected on find users
+        const conversationId = this.$route.query.conversation
+
+        if (typeof conversationId === 'string') {
+            const conversation = this.conversations.find(
+                (chat) => chat.id === conversationId
+            )
+
+            if (conversation) {
+                await this.openConversation(conversation)
+            }
+        }
+
+        // Keep chat updated automatically
+        this.refreshTimer = window.setInterval(() => {
+            this.autoRefresh()
+        }, 3000)
+    },
+
 
 	beforeUnmount() {
 	    // Stop polling when leaving the page
@@ -182,6 +197,16 @@ export default {
                     Logged in as {{ username }}
                 </div>
             </div>
+
+
+        <RouterLink
+            to="/users"
+            class="btn btn-primary btn-sm"
+        >
+            <i class="bi bi-plus-lg me-1"></i>
+            New Chat
+        </RouterLink>
+
 
             <button
                 type="button"
