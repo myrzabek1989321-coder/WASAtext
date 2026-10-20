@@ -5,6 +5,7 @@ export default {
         return {
             username: localStorage.getItem('wasa_username') || '',
             userId: localStorage.getItem('wasa_identifier') || '',
+            users: [],
 
             conversations: [],
             selectedId: null,
@@ -47,6 +48,56 @@ export default {
             }
 
             return 'Cannot connect to the server.'
+        },
+            
+        async loadUsers() {
+            try {
+                const response = await this.$axios.get('/users')
+                this.users = Array.isArray(response.data)
+                    ? response.data
+                    : []
+            } catch (error) {
+                console.error('Cannot load user photos:', error)
+            }
+        },
+
+        // Convert API photo to image URL
+        photoUrl(photo) {
+            if (!photo?.data || !photo?.mimeType) {
+                return null
+            }
+        
+            return `data:${photo.mimeType};base64,${photo.data}`
+        },
+
+        // Get latest photo of user
+        userPhoto(user) {
+            if (!user) return null
+        
+            const current = this.users.find(
+                item => item.id === user.id
+            )
+        
+            return this.photoUrl(current?.photo || user.photo)
+        },
+
+        // Get avatar of private chat or group
+        chatPhoto(conversation) {
+            if (!conversation) return null
+        
+            if (conversation.photo?.data) {
+                return this.photoUrl(conversation.photo)
+            }
+        
+            if (conversation.type === 'private') {
+                const otherUser = conversation.members?.find(
+                    member => member.id !== this.userId
+                )
+            
+                return this.userPhoto(otherUser)
+            }
+        
+            return null
         },
 
 
@@ -202,6 +253,7 @@ export default {
                 
                 // Refresh conversation list and latest previews
                 await this.loadConversations()
+                await this.loadUsers()
                 
             } catch (error) {
                 this.error = this.getErrorMessage(error)
@@ -538,6 +590,14 @@ export default {
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <h1 class="h4 mb-1">My Chats</h1>
+                <img
+                    v-if="userPhoto({ id: userId })"
+                    :src="userPhoto({ id: userId })"
+                    alt="My profile"
+                    class="rounded-circle object-fit-cover me-2"
+                    width="36"
+                    height="36"
+                />
                 <div class="text-body-secondary small">
                     Logged in as {{ username }}
                 </div>
@@ -616,6 +676,30 @@ export default {
                             @click="openConversation(conversation)"
                         >
                             <div class="d-flex justify-content-between gap-2">
+
+                                <!-- Conversation avatar -->
+                                <img
+                                    v-if="chatPhoto(conversation)"
+                                    :src="chatPhoto(conversation)"
+                                    alt="Chat avatar"
+                                    class="rounded-circle object-fit-cover me-2"
+                                    width="44"
+                                    height="44"
+                                />
+
+                                <span
+                                    v-else
+                                    class="d-inline-flex align-items-center justify-content-center
+                                           rounded-circle bg-primary-subtle text-primary me-2"
+                                    style="width:44px;height:44px;flex-shrink:0;"
+                                >
+                                    <i
+                                        :class="conversation.type === 'group'
+                                            ? 'bi bi-people-fill'
+                                            : 'bi bi-person-fill'"
+                                    ></i>
+                                </span>
+
                                 <strong>{{ conversation.name }}</strong>
 
                                 <span class="small">
@@ -701,6 +785,14 @@ export default {
                                     : 'bg-body-secondary'"
                             >
                                 <div class="small fw-bold mb-1">
+                                    <img
+                                        v-if="userPhoto(message.sender)"
+                                        :src="userPhoto(message.sender)"
+                                        alt="Sender avatar"
+                                        class="rounded-circle object-fit-cover me-2"
+                                        width="28"
+                                        height="28"
+                                    />
                                     {{ message.sender?.name }}
                                 </div>
 

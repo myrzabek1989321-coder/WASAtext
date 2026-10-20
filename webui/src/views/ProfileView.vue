@@ -57,6 +57,7 @@ async function loadProfile() {
 }
 
 // PUT /users/me/username
+
 async function saveUsername() {
     if (savingName.value) return
 
@@ -77,13 +78,19 @@ async function saveUsername() {
             { name }
         )
 
-        user.value = response.data
-        username.value = response.data.name
+        // Keep existing photo if API response does not include it
+        user.value = {
+            ...user.value,
+            ...(response.data || {}),
+            name: response.data?.name || name,
+            photo: response.data?.photo ?? user.value?.photo,
+        }
 
-        // Keep displayed username synchronized
+        username.value = user.value.name
+
         localStorage.setItem(
             'wasa_username',
-            response.data.name
+            user.value.name
         )
 
         success.value = 'Username updated successfully!'
@@ -93,6 +100,7 @@ async function saveUsername() {
         savingName.value = false
     }
 }
+
 
 // Convert image into Base64
 function readPhoto(file) {
