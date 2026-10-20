@@ -6,6 +6,7 @@ import LoginView from '../views/LoginView.vue'
 import UsersView from '../views/UsersView.vue'
 import CreateGroupView from '../views/CreateGroupView.vue'
 import GroupSettingsView from '../views/GroupSettingsView.vue'
+import ProfileView from '../views/ProfileView.vue'
 
 const router = createRouter({
     history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -31,6 +32,10 @@ const router = createRouter({
 		    path: '/groups/:id/settings',
 		    component: GroupSettingsView,
 		},
+        {
+            path: '/profile',
+            component: ProfileView,
+        },
     ],
 })
 

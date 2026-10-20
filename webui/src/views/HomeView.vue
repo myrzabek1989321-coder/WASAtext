@@ -560,6 +560,15 @@ export default {
             New Group
         </RouterLink>
 
+        <RouterLink
+            to="/profile"
+            class="btn btn-outline-primary btn-sm"
+        >
+            <i class="bi bi-person-circle me-1"></i>
+            My Profile
+        </RouterLink>
+
+
             <button
                 type="button"
                 class="btn btn-outline-danger btn-sm"
