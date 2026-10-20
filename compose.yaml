@@ -1,0 +1,32 @@
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    image: wasa-backend:latest
+    container_name: wasa-backend
+    ports:
+      - "3000:3000"
+    environment:
+      CFG_DB_FILENAME: /data/wasa.db
+    volumes:
+      - wasa-data:/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: wasa-frontend:latest
+    container_name: wasa-frontend
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  wasa-data:
+    external: true
+    name: wasa-data
