@@ -159,51 +159,56 @@ export default {
 
 
         
-async sendMessage() {
-    const text = this.draft.trim()
 
-    if (!text || !this.selectedId || this.sending) {
-        return
-    }
+    async sendMessage() {
+        const text = this.draft.trim()
 
-    const conversationId = this.selectedId
+        if (!text || !this.selectedId || this.sending) {
+            return
+        }
 
-    this.sending = true
-    this.error = ''
+        const conversationId = this.selectedId
 
-    try {
         const request = {
             type: 'text',
             text: text,
         }
 
-        // Attach the original message ID when replying
         if (this.replyingTo) {
             request.replyToMessageId = this.replyingTo.id
         }
 
-        await this.$axios.post(
-            `/conversations/${encodeURIComponent(conversationId)}/messages`,
-            request
-        )
+        this.sending = true
+        this.error = ''
 
-        this.draft = ''
+        try {
+            await this.$axios.post(
+                `/conversations/${encodeURIComponent(conversationId)}/messages`,
+                request
+            )
 
-        if (this.selectedId === conversationId) {
-            this.replyingTo = null
+            // Clear input and reply panel immediately after success
+            if (this.selectedId === conversationId) {
+                this.draft = ''
+                this.replyingTo = null
+            }
 
-            await this.openConversation({
-                id: conversationId,
-            })
+            // Reload messages and conversations
+            if (this.selectedId === conversationId) {
+                await this.openConversation({
+                    id: conversationId,
+                })
+            }
+
+            await this.loadConversations()
+
+        } catch (error) {
+            this.error = this.getErrorMessage(error)
+        } finally {
+            this.sending = false
         }
+    },
 
-        await this.loadConversations()
-    } catch (error) {
-        this.error = this.getErrorMessage(error)
-    } finally {
-        this.sending = false
-    }
-},
 
         
             
@@ -512,14 +517,7 @@ async sendMessage() {
                                     class="img-fluid rounded mt-1"
                                     style="max-height: 240px;"
                                 />
-
-                                <div
-                                    v-if="message.replyToMessageId"
-                                    class="small opacity-75 mt-1"
-                                >
-                                    <i class="bi bi-reply"></i>
-                                    Reply
-                                </div>
+                                
 
                                 <button
                                     type="button"
