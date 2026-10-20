@@ -552,6 +552,13 @@ export default {
             New Chat
         </RouterLink>
 
+        <RouterLink
+            to="/groups/new"
+            class="btn btn-outline-primary btn-sm"
+        >
+            <i class="bi bi-people-fill me-1"></i>
+            New Group
+        </RouterLink>
 
             <button
                 type="button"
