@@ -100,6 +100,41 @@ export default {
             return null
         },
 
+        formatMessageTime(value) {
+            if (!value) return ''
+        
+            const date = new Date(value)
+        
+            if (Number.isNaN(date.getTime())) {
+                return ''
+            }
+        
+            return date.toLocaleTimeString('en-GB', {
+                hour: '2-digit',
+                minute: '2-digit',
+            })
+        },
+
+        formatChatTime(value) {
+            if (!value) return ''
+        
+            const date = new Date(value)
+        
+            if (Number.isNaN(date.getTime())) {
+                return ''
+            }
+        
+            const today = new Date()
+        
+            if (date.toDateString() === today.toDateString()) {
+                return this.formatMessageTime(value)
+            }
+        
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+            })
+        },
 
 		async autoRefresh() {
 		    if (this.refreshing) {
@@ -701,6 +736,14 @@ export default {
                                 </span>
 
                                 <strong>{{ conversation.name }}</strong>
+                                
+                                <!-- Last message time -->
+                                <span
+                                    v-if="conversation.lastMessageAt"
+                                    class="small text-body-secondary ms-auto"
+                                >
+                                    {{ formatChatTime(conversation.lastMessageAt) }}
+                                </span>
 
                                 <span class="small">
                                     <i
@@ -989,17 +1032,39 @@ export default {
                                     </span>
                                 </div>
 
-
+                                
+                                <!-- Message time and delivery status -->
                                 <div
-                                    v-if="message.sender?.id === userId"
-                                    class="small opacity-75 text-end mt-1"
+                                    class="d-flex align-items-center justify-content-end
+                                           gap-2 small opacity-75 mt-1"
                                 >
-                                    <span v-if="message.read">✓✓ Read</span>
-                                    <span v-else-if="message.delivered">
-                                        ✓✓ Delivered
+                                    <!-- Sending time -->
+                                    <span>
+                                        {{ formatMessageTime(message.createdAt) }}
                                     </span>
-                                    <span v-else>✓ Sent</span>
+                                
+                                    <!-- Status only for my own messages -->
+                                    <template v-if="message.sender?.id === userId">
+                                        <!-- Read -->
+                                        <template v-if="message.read">
+                                            <i class="bi bi-check2-all text-info"></i>
+                                            <span>Read</span>
+                                        </template>
+                                    
+                                        <!-- Delivered but not read -->
+                                        <template v-else-if="message.delivered">
+                                            <i class="bi bi-check2-all"></i>
+                                            <span>Delivered</span>
+                                        </template>
+                                    
+                                        <!-- Sent -->
+                                        <template v-else>
+                                            <i class="bi bi-check2"></i>
+                                            <span>Sent</span>
+                                        </template>
+                                    </template>
                                 </div>
+
                             </div>
                         </div>
                     </div>
