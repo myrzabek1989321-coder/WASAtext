@@ -17,6 +17,7 @@ export default {
             forwardPickerId: null,
             forwardingMessageId: null,
 
+            deletingMessageId: null,
 
             loading: false,
             loadingMessages: false,
@@ -209,6 +210,69 @@ export default {
             }
         },
 
+        async deleteMessage(message) {
+            // User can delete only their own messages
+            if (message.sender?.id !== this.userId) {
+                return
+            }
+        
+            if (this.deletingMessageId !== null || !this.selectedId) {
+                return
+            }
+        
+            const confirmed = window.confirm(
+                'Are you sure you want to delete this message?'
+            )
+        
+            if (!confirmed) {
+                return
+            }
+        
+            const conversationId = this.selectedId
+        
+            this.deletingMessageId = message.id
+            this.error = ''
+        
+            try {
+                // Delete message from the Go backend
+                await this.$axios.delete(
+                    `/messages/${encodeURIComponent(message.id)}`
+                )
+            
+                // Cancel reply if its original message was deleted
+                if (this.replyingTo?.id === message.id) {
+                    this.replyingTo = null
+                }
+            
+                // Close any open message action menus
+                this.reactionPickerId = null
+                this.forwardPickerId = null
+            
+                // Remove deleted message immediately
+                if (this.selectedId === conversationId) {
+                    this.messages = this.messages.filter(
+                        (item) => item.id !== message.id
+                    )
+                }
+            
+                // Refresh the conversation preview
+                await this.loadConversations()
+            
+                // Reload message data from server
+                const response = await this.$axios.get(
+                    `/conversations/${encodeURIComponent(conversationId)}`
+                )
+            
+                if (this.selectedId === conversationId) {
+                    this.messages = [...response.data.messages].reverse()
+                }
+            
+            } catch (error) {
+                this.error = this.getErrorMessage(error)
+            } finally {
+                this.deletingMessageId = null
+            }
+        },
 
         async toggleReaction(message, emoji) {
             if (this.reactingMessageId !== null || !this.selectedId) {
@@ -647,7 +711,6 @@ export default {
                                     style="max-height: 240px;"
                                 />
                                 
-
                                 <button
                                     type="button"
                                     class="btn btn-link btn-sm p-0 mt-2 text-decoration-none"
@@ -660,6 +723,23 @@ export default {
                                     Reply
                                 </button>
 
+                                <!-- Delete message button: visible only to the sender -->
+                                <button
+                                    v-if="message.sender?.id === userId"
+                                    type="button"
+                                    class="btn btn-link btn-sm p-0 ms-3 mt-2 text-decoration-none text-white"
+                                    :disabled="deletingMessageId !== null"
+                                    @click="deleteMessage(message)"
+                                >
+                                    <span
+                                        v-if="deletingMessageId === message.id"
+                                        class="spinner-border spinner-border-sm me-1"
+                                    ></span>
+
+                                    <i v-else class="bi bi-trash me-1"></i>
+
+                                    {{ deletingMessageId === message.id ? 'Deleting...' : 'Delete' }}
+                                </button>
 
                                 <!-- Reaction button -->
                                 <button
