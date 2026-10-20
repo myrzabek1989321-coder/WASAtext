@@ -26,7 +26,8 @@ services:
       - backend
     restart: unless-stopped
 
+
 volumes:
   wasa-data:
-    external: true
     name: wasa-data
+
