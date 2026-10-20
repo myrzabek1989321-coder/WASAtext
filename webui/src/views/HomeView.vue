@@ -11,6 +11,8 @@ export default {
             messages: [],
             draft: '',
             replyingTo: null,
+            reactionPickerId: null,
+            reactingMessageId: null,
 
             loading: false,
             loadingMessages: false,
@@ -134,6 +136,74 @@ export default {
         cancelReply() {
             this.replyingTo = null
         },
+
+
+        myReaction(message) {
+            return (message.reactions || []).find(
+                reaction => reaction.user?.id === this.userId
+            ) || null
+        },
+
+        reactionCounts(message) {
+            const counts = {}
+        
+            for (const reaction of message.reactions || []) {
+                const emoji = reaction.emoticon
+                counts[emoji] = (counts[emoji] || 0) + 1
+            }
+        
+            return counts
+        },
+
+        toggleReactionPicker(messageId) {
+            this.reactionPickerId =
+                this.reactionPickerId === messageId ? null : messageId
+        },
+
+        async toggleReaction(message, emoji) {
+            if (this.reactingMessageId !== null || !this.selectedId) {
+                return
+            }
+        
+            const conversationId = this.selectedId
+            const currentReaction = this.myReaction(message)
+        
+            this.reactingMessageId = message.id
+            this.error = ''
+        
+            try {
+                if (currentReaction?.emoticon === emoji) {
+                    // Clicking same emoji removes reaction
+                    await this.$axios.delete(
+                        `/messages/${encodeURIComponent(message.id)}/comments`
+                    )
+                } else {
+                    // Add reaction or replace previous one
+                    await this.$axios.post(
+                        `/messages/${encodeURIComponent(message.id)}/comments`,
+                        {
+                            emoticon: emoji,
+                        }
+                    )
+                }
+            
+                // Reload messages without changing selected chat or reply
+                const response = await this.$axios.get(
+                    `/conversations/${encodeURIComponent(conversationId)}`
+                )
+            
+                if (this.selectedId === conversationId) {
+                    this.messages = [...response.data.messages].reverse()
+                }
+            
+                this.reactionPickerId = null
+            } catch (error) {
+                this.error = this.getErrorMessage(error)
+            } finally {
+                this.reactingMessageId = null
+            }
+        },
+
 
         getReplyAuthor(messageId) {
             const original = this.messages.find(
@@ -530,6 +600,56 @@ export default {
                                     <i class="bi bi-reply me-1"></i>
                                     Reply
                                 </button>
+
+
+                                <!-- Reaction button -->
+                                <button
+                                    type="button"
+                                    class="btn btn-link btn-sm p-0 ms-3 mt-2 text-decoration-none"
+                                    :class="message.sender?.id === userId
+                                        ? 'text-white'
+                                        : 'text-primary'"
+                                    @click="toggleReactionPicker(message.id)"
+                                >
+                                    <i class="bi bi-emoji-smile me-1"></i>
+                                    React
+                                </button>
+
+                                <!-- Emoji selection -->
+                                <div
+                                    v-if="reactionPickerId === message.id"
+                                    class="d-flex gap-2 flex-wrap mt-2"
+                                >
+                                    <button
+                                        v-for="emoji in [ '👍', '😂', '❤️', '💔']"
+                                        :key="emoji"
+                                        type="button"
+                                        class="btn btn-sm btn-light border"
+                                        :class="{
+                                            'border-primary border-2':
+                                                myReaction(message)?.emoticon === emoji
+                                        }"
+                                        :disabled="reactingMessageId !== null"
+                                        @click="toggleReaction(message, emoji)"
+                                    >
+                                        {{ emoji }}
+                                    </button>
+                                </div>
+
+                                <!-- Existing reactions and their counts -->
+                                <div
+                                    v-if="message.reactions?.length"
+                                    class="d-flex gap-1 flex-wrap mt-2"
+                                >
+                                    <span
+                                        v-for="(count, emoji) in reactionCounts(message)"
+                                        :key="emoji"
+                                        class="badge rounded-pill bg-body-secondary text-body-emphasis border"
+                                    >
+                                        {{ emoji }} {{ count }}
+                                    </span>
+                                </div>
+
 
                                 <div
                                     v-if="message.sender?.id === userId"
