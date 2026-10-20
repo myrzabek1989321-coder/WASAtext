@@ -1,13 +1,24 @@
 openapi: 3.0.3
 info:
-  title: Fantastic Coffee (decaffeinated)
-  description: Fantastic Coffee (decaffeinated), the skeleton project for Web and Software architecture course
+  title: WASAText API
+  description: REST API for the WASAText messaging application, developed for the Web and Software Architecture
+    course.
   version: 1.0.0
 servers:
   - url: http://localhost:3000
 
-
-
+# All APIs except /session require the user identifier as a Bearer token.
+tags:
+  - name: Login
+    description: User creation and simplified login
+  - name: Users
+    description: User discovery and profile management
+  - name: Conversations
+    description: Private and group conversation discovery
+  - name: Messages
+    description: Message sending, replies, forwarding, reactions and deletion
+  - name: Groups
+    description: Group creation and membership or metadata management
 security:
   - BearerAuth: []
 
@@ -15,11 +26,11 @@ paths:
   /session:
     post:
       tags: [Login]
-      summary: Log in or create user
-      description: | 
-        When username already exists, return identifier 
-        Or create the user and return new identifier
-        Without password, HTTP session or cookie
+      summary: Log in or create a user
+      description: |
+        When the username already exists, return its identifier.
+        Otherwise create the user and return its new identifier.
+        No password, HTTP session or cookie is used.
       operationId: doLogin
       security: []
       requestBody:
@@ -30,13 +41,13 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '201':
-          description: User logged or registered successfully
+          description: User logged in or registered successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '500': { $ref: '#/components/responses/InternalServerError' }
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
 
   /users:
     get:
@@ -53,66 +64,75 @@ paths:
           description: Optional case-insensitive substring of a username
           schema:
             type: string
+            description: Optional query filter. Empty search matches all available usernames.
+            minLength: 0
+            maxLength: 1024
+            pattern: ^[\s\S]*$
       responses:
         '200':
           description: Users matching the search
           content:
             application/json:
               schema:
+                description: Array of users matching the optional search criteria.
                 type: array
-                items: { $ref: '#/components/schemas/User' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '500': { $ref: '#/components/responses/InternalServerError' }
+                items: {$ref: '#/components/schemas/User'}
+                minItems: 0
+                maxItems: 1000000
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
 
   /users/me/username:
     put:
       tags: [Users]
-      summary: Change the current users username
-      description: The new username must not be used by another user
+      summary: Change the current user's username
+      description: The new username must not be used by another user.
       operationId: setMyUserName
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/UsernameRequest' }
+            schema: {$ref: '#/components/schemas/UsernameRequest'}
       responses:
         '200':
           description: Updated user
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/User' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '409': { $ref: '#/components/responses/Conflict' }
+              schema: {$ref: '#/components/schemas/User'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
 
   /users/me/photo:
     put:
       tags: [Users]
-      summary: Change the current users profile photo
+      summary: Change the current user's profile photo
+      description: Upload or replace the authenticated user's profile photo using base64-encoded JPEG, PNG or
+        GIF data.
       operationId: setMyPhoto
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/Photo' }
+            schema: {$ref: '#/components/schemas/Photo'}
       responses:
         '200':
           description: Updated user
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/User' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+              schema: {$ref: '#/components/schemas/User'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
 
   /conversations:
     get:
       tags: [Conversations]
       summary: Get conversations of the current user
       description: |
-        Return the current users private and group conversations, 
-        ordered by the latest message. Each entry 
-        contains other users name/group name, photo, and latest 
-        message. For photo messags preview indicates a photo more than text
+        Return the current user's private and group conversations, ordered
+        by the latest message (newest first). Each entry contains the other
+        user's name or group name, photo, and latest message preview.
+        For photo messages the preview indicates a photo rather than text.
       operationId: getMyConversations
       responses:
         '200':
@@ -120,22 +140,25 @@ paths:
           content:
             application/json:
               schema:
+                description: Conversations visible to the authenticated user, newest first.
                 type: array
-                items: { $ref: '#/components/schemas/ConversationSummary' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+                items: {$ref: '#/components/schemas/ConversationSummary'}
+                minItems: 0
+                maxItems: 1000000
+        '401': {$ref: '#/components/responses/Unauthorized'}
     post:
       tags: [Conversations]
       summary: Start a private conversation
       description: |
-        Start a conversation with existing user. 
-        Return the existing private conversation if one already exists 
-        between these users
+        Start a conversation with any existing user. Return the existing
+        private conversation if one already exists between these users.
       operationId: createConversation
       requestBody:
         required: true
         content:
           application/json:
             schema:
+              description: Specifies the existing user with whom to start or reopen a private conversation.
               type: object
               required: [recipientId]
               properties:
@@ -146,10 +169,11 @@ paths:
           description: Conversation created or found
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ConversationSummary' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
   /conversations/{conversationId}:
     parameters:
@@ -167,40 +191,42 @@ paths:
           description: Conversation and messages
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ConversationDetail' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
   /conversations/{conversationId}/messages:
     parameters:
       - $ref: '#/components/parameters/ConversationId'
     post:
       tags: [Messages]
-      summary: Send a text or photo message, could be reply
+      summary: Send a text or photo message, optionally as a reply
       description: |
-        Send a text or photo message in a conversation the user belongs to
-        ReplyToMessageId refers to a message in this conversation
-        Photo data is represented as base64 JPEG, PNG or GIF
+        Send a text or photo message in a conversation the user belongs to.
+        An optional replyToMessageId refers to a message in this conversation.
+        Photo data is represented as base64 JPEG, PNG or GIF (API design choice).
       operationId: sendMessage
       requestBody:
         required: true
         content:
           application/json:
             schema:
+              description: A text message or a photo message; either variant can include a reply reference.
               oneOf:
                 - $ref: '#/components/schemas/TextMessageRequest'
                 - $ref: '#/components/schemas/PhotoMessageRequest'
       responses:
         '201':
-          description: Message was sent successfully
+          description: Message sent successfully
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Message' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: {$ref: '#/components/schemas/Message'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
   /messages/{messageId}/forward:
     parameters:
@@ -208,65 +234,75 @@ paths:
     post:
       tags: [Messages]
       summary: Forward a message to another conversation
+      description: Forward an existing message into another conversation that the authenticated user is
+        permitted to access.
       operationId: forwardMessage
       requestBody:
         required: true
         content:
           application/json:
             schema:
+              description: Identifies the target conversation for the forwarded message.
               type: object
               required: [conversationId]
               properties:
-                conversationId: { $ref: '#/components/schemas/Identifier' }
+                conversationId: {$ref: '#/components/schemas/Identifier'}
       responses:
         '201':
-          description: Forwarded message is created
+          description: Forwarded message created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Message' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: {$ref: '#/components/schemas/Message'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
   /messages/{messageId}/comments:
     parameters:
       - $ref: '#/components/parameters/MessageId'
     post:
       tags: [Messages]
-      summary: Add/update my emoji reaction to message
+      summary: Add or update my emoji reaction to a message
+      description: Add or replace the authenticated user's emoji reaction to a message. A user can have at most
+        one reaction per message.
       operationId: commentMessage
       requestBody:
         required: true
         content:
           application/json:
             schema:
+              description: Contains the emoji to add or replace for this message.
               type: object
               required: [emoticon]
               properties:
                 emoticon:
                   type: string
                   minLength: 1
-                  example: '⭐'
+                  example: '❤️'
+                  description: Unicode emoji to add or replace as the authenticated user's reaction.
+                  pattern: ^[\s\S]+$
+                  maxLength: 64
       responses:
         '200':
-          description: Reaction was created or updated
+          description: Reaction created or updated
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Reaction' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: {$ref: '#/components/schemas/Reaction'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
     delete:
       tags: [Messages]
-      summary: Remove my emoji reaction from message
+      summary: Remove my emoji reaction from a message
+      description: Remove the authenticated user's reaction from the indicated message, if present.
       operationId: uncommentMessage
       responses:
-        '204': { description: Reaction removed }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '204': {description: Reaction removed}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
   /messages/{messageId}:
     parameters:
@@ -274,44 +310,48 @@ paths:
     delete:
       tags: [Messages]
       summary: Delete a message sent by the current user
-      description: User may only delete messages that they sent
+      description: A user may only delete messages that they sent.
       operationId: deleteMessage
       responses:
-        '204': { description: Message deleted }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '204': {description: Message deleted}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
   /groups:
     post:
       tags: [Groups]
-      summary: Create group conversation
+      summary: Create a group conversation
       description: |
-        Create group with any number of other users
-        Creator automatically will become a member of group
+        Create a group with any number of other existing users.
+        The creator automatically becomes a member of the group.
       operationId: createGroup
       requestBody:
         required: true
         content:
           application/json:
             schema:
+              description: Defines a new group and the users to add alongside its creator.
               type: object
               required: [name, memberIds]
               properties:
-                name: { $ref: '#/components/schemas/GroupName' }
+                name: {$ref: '#/components/schemas/GroupName'}
                 memberIds:
                   type: array
                   uniqueItems: true
-                  items: { $ref: '#/components/schemas/Identifier' }
+                  items: {$ref: '#/components/schemas/Identifier'}
+                  minItems: 0
+                  maxItems: 100000
+                  description: Identifiers of existing users to add to the group.
       responses:
         '201':
           description: Group created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ConversationSummary' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: {$ref: '#/components/schemas/ConversationSummary'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
   /groups/{groupId}/members:
     parameters:
@@ -319,13 +359,14 @@ paths:
     post:
       tags: [Groups]
       summary: Add users to an existing group
-      description: Only existing members may add users to group
+      description: Only existing members may add users to a group.
       operationId: addToGroup
       requestBody:
         required: true
         content:
           application/json:
             schema:
+              description: Identifies existing users to add to the specified group.
               type: object
               required: [memberIds]
               properties:
@@ -333,85 +374,91 @@ paths:
                   type: array
                   minItems: 1
                   uniqueItems: true
-                  items: { $ref: '#/components/schemas/Identifier' }
+                  items: {$ref: '#/components/schemas/Identifier'}
+                  maxItems: 100000
+                  description: Identifiers of existing users to add to the group.
       responses:
         '200':
           description: Updated group members
           content:
             application/json:
               schema:
+                description: Updated list of members of the group.
                 type: array
-                items: { $ref: '#/components/schemas/User' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+                items: {$ref: '#/components/schemas/User'}
+                minItems: 0
+                maxItems: 1000000
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
   /groups/{groupId}/members/me:
     parameters:
       - $ref: '#/components/parameters/GroupId'
     delete:
       tags: [Groups]
-      summary: Leave group
-      description: User may leave only group of where they are member
+      summary: Leave a group
+      description: A user may leave only a group of which they are a member.
       operationId: leaveGroup
       responses:
-        '204': { description: Left group }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '204': {description: Left the group}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
   /groups/{groupId}/name:
     parameters:
       - $ref: '#/components/parameters/GroupId'
     put:
       tags: [Groups]
-      summary: Change group name
-      description: Only group members can change group name
+      summary: Change a group name
+      description: Only group members can change the group name.
       operationId: setGroupName
       requestBody:
         required: true
         content:
           application/json:
             schema:
+              description: Specifies the new display name for the group.
               type: object
               required: [name]
               properties:
-                name: { $ref: '#/components/schemas/GroupName' }
+                name: {$ref: '#/components/schemas/GroupName'}
       responses:
         '200':
-          description: Group name was updated
+          description: Group name updated
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ConversationSummary' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: {$ref: '#/components/schemas/ConversationSummary'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
   /groups/{groupId}/photo:
     parameters:
       - $ref: '#/components/parameters/GroupId'
     put:
       tags: [Groups]
-      summary: Change group photo
-      description: Only group members are able to change group photo
+      summary: Change a group photo
+      description: Only group members can change the group photo.
       operationId: setGroupPhoto
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/Photo' }
+            schema: {$ref: '#/components/schemas/Photo'}
       responses:
         '200':
-          description: Group photo was updated
+          description: Group photo updated
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ConversationSummary' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: {$ref: '#/components/schemas/ConversationSummary'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 
 components:
   securitySchemes:
@@ -420,148 +467,173 @@ components:
       scheme: bearer
       description: |
         Use the user identifier returned from POST /session as the token,
-        for ex: Authorization: Bearer qwerty12345
+        e.g. Authorization: Bearer abcdef012345.
 
   parameters:
     ConversationId:
       name: conversationId
       in: path
       required: true
-      description: Unique identifier of conversation
-      schema: { $ref: '#/components/schemas/Identifier' }
+      description: Unique identifier of a conversation
+      schema: {$ref: '#/components/schemas/Identifier'}
     GroupId:
       name: groupId
       in: path
       required: true
-      description: Unique identifier of the group
-      schema: { $ref: '#/components/schemas/Identifier' }
+      description: Unique identifier of a group
+      schema: {$ref: '#/components/schemas/Identifier'}
     MessageId:
       name: messageId
       in: path
       required: true
-      description: Unique identifier of the message
-      schema: { $ref: '#/components/schemas/Identifier' }
+      description: Unique identifier of a message
+      schema: {$ref: '#/components/schemas/Identifier'}
 
   responses:
     BadRequest:
-      description: Invalid/incomplete request
+      description: Invalid or incomplete request
     Unauthorized:
-      description: Missing/unknown Bearer user identifir
+      description: Missing or unknown Bearer user identifier
     Forbidden:
-      description: User has no permission to access this resource
+      description: The user has no permission to access this resource
     NotFound:
-      description: Requested resource does not exist
+      description: The requested resource does not exist
     Conflict:
-      description: Resource conflicts with existing data
+      description: The resource conflicts with existing data
     InternalServerError:
       description: Unexpected server error
 
   schemas:
     Identifier:
+      description: Unique opaque identifier used for users, messages, groups, and conversations.
       type: string
       minLength: 1
-      example: 'qwerty12345'
+      example: 'abcdef012345'
 
+      pattern: ^[0-9a-fA-F]+$
+      maxLength: 128
     Username:
+      description: User display name, containing between 3 and 16 characters.
       type: string
       minLength: 3
       maxLength: 16
       example: Maria
 
+      pattern: ^[\s\S]+$
     GroupName:
+      description: Human-readable name of a group conversation.
       type: string
       minLength: 1
-      example: BestFriends
+      example: Friends
 
+      pattern: ^[\s\S]+$
+      maxLength: 1000
     LoginRequest:
+      description: Login request containing the chosen or existing username.
       type: object
       required: [name]
       properties:
-        name: { $ref: '#/components/schemas/Username' }
+        name: {$ref: '#/components/schemas/Username'}
 
     LoginResponse:
+      description: Identifier returned after login or account creation.
       type: object
       required: [identifier]
       properties:
-        identifier: { $ref: '#/components/schemas/Identifier' }
+        identifier: {$ref: '#/components/schemas/Identifier'}
 
     UsernameRequest:
+      description: Requested replacement display name for the authenticated user.
       type: object
       required: [name]
       properties:
-        name: { $ref: '#/components/schemas/Username' }
+        name: {$ref: '#/components/schemas/Username'}
 
     Photo:
       type: object
       description: |
-        Base64-encoded JPEG, PNG, GIF image
+        Base64-encoded JPEG, PNG or GIF image. This is an API design choice;
+        the assignment does not prescribe an image serialization format.
       required: [mimeType, data]
       properties:
         mimeType:
           type: string
           enum: [image/jpeg, image/png, image/gif]
           example: image/png
+          description: MIME type of the JPEG, PNG, or GIF image.
         data:
           type: string
           format: byte
           description: Base64-encoded image bytes
 
+          minLength: 1
+          maxLength: 100000000
     User:
+      description: Public profile of a WASAText user.
       type: object
       required: [id, name]
       properties:
-        id: { $ref: '#/components/schemas/Identifier' }
-        name: { $ref: '#/components/schemas/Username' }
+        id: {$ref: '#/components/schemas/Identifier'}
+        name: {$ref: '#/components/schemas/Username'}
         photo:
           $ref: '#/components/schemas/Photo'
 
     Reaction:
+      description: One emoji reaction belonging to one user.
       type: object
       required: [user, emoticon]
       properties:
-        user: { $ref: '#/components/schemas/User' }
+        user: {$ref: '#/components/schemas/User'}
         emoticon:
           type: string
           minLength: 1
-          example: '⭐'
+          example: '❤️'
 
+          description: Unicode emoji selected by the user.
     TextMessageRequest:
+      description: Text message to send, possibly in reply to another message.
       type: object
       required: [type, text]
       properties:
         type:
           type: string
           enum: [text]
+          description: Message type discriminator.
         text:
           type: string
           minLength: 1
-        replyToMessageId: { $ref: '#/components/schemas/Identifier' }
+          description: Text content of the message.
+          maxLength: 200000
+          pattern: ^[\s\S]+$
+        replyToMessageId: {$ref: '#/components/schemas/Identifier'}
 
     PhotoMessageRequest:
+      description: Photo message to send, possibly in reply to another message.
       type: object
       required: [type, photo]
       properties:
         type:
           type: string
           enum: [photo]
-        photo: { $ref: '#/components/schemas/Photo' }
-        replyToMessageId: { $ref: '#/components/schemas/Identifier' }
+          description: Message type discriminator.
+        photo: {$ref: '#/components/schemas/Photo'}
+        replyToMessageId: {$ref: '#/components/schemas/Identifier'}
 
     Message:
       type: object
       required: [id, conversationId, sender, type, createdAt, reactions, delivered, read]
       description: |
-        For sent messages, delivered means all recipients have received
-        the message in their conversation list,
-        Read means all recipients have opened conversation,
-        Received messages also show sender
+        For outgoing messages, delivered means every recipient has received
+        the message in their conversation list. Read means every recipient
+        has opened the conversation. Incoming messages show the sender.
       properties:
-        id: { $ref: '#/components/schemas/Identifier' }
-        conversationId: { $ref: '#/components/schemas/Identifier' }
-        sender: { $ref: '#/components/schemas/User' }
+        id: {$ref: '#/components/schemas/Identifier'}
+        conversationId: {$ref: '#/components/schemas/Identifier'}
+        sender: {$ref: '#/components/schemas/User'}
         type:
           type: string
           enum: [text, photo]
+          description: 'Message format: text or photo.'
         text:
           type: string
           description: Present when type is text
@@ -570,49 +642,69 @@ components:
         createdAt:
           type: string
           format: date-time
-          example: '2020-01-01T00:00:00Z'
-        replyToMessageId: { $ref: '#/components/schemas/Identifier' }
-        forwardedFromMessageId: { $ref: '#/components/schemas/Identifier' }
+          example: '2026-10-19T12:30:00Z'
+          description: UTC timestamp at which the message was created.
+        replyToMessageId: {$ref: '#/components/schemas/Identifier'}
+        forwardedFromMessageId: {$ref: '#/components/schemas/Identifier'}
         reactions:
           type: array
-          items: { $ref: '#/components/schemas/Reaction' }
-        delivered: { type: boolean }
-        read: { type: boolean }
+          items: {$ref: '#/components/schemas/Reaction'}
+          description: Emoji reactions recorded for the message.
+          minItems: 0
+          maxItems: 1000000
+        delivered: {type: boolean, description: True if the message has been delivered to all recipients.}
+        read: {type: boolean, description: True if the message has been read by all recipients.}
 
     ConversationSummary:
+      description: Summary of a private or group conversation, including members and recent activity.
       type: object
       required: [id, type, name, members]
       properties:
-        id: { $ref: '#/components/schemas/Identifier' }
+        id: {$ref: '#/components/schemas/Identifier'}
         type:
           type: string
           enum: [private, group]
+          description: Private conversation or group conversation.
         name:
           type: string
-          example: BestFriends
+          example: Friends
+          description: Conversation display name (other participant or group).
         photo:
           $ref: '#/components/schemas/Photo'
         members:
           type: array
-          items: { $ref: '#/components/schemas/User' }
+          items: {$ref: '#/components/schemas/User'}
+          description: Users currently belonging to the conversation.
+          minItems: 0
+          maxItems: 1000000
         lastMessageAt:
           type: string
           format: date-time
-          description: Timestamp of the latest message, when exists
+          description: Timestamp of the latest message, when one exists
         lastMessagePreview:
           type: string
-          description: Text snippet for text messages/an icon marker for photos
-          example: Helloooo
+          description: Text snippet for text messages or an icon marker for photos
+          example: Hello!
         lastMessageType:
           type: string
           enum: [text, photo]
+          description: Format of the most recent message, when any exists.
 
     ConversationDetail:
+      description: Full response for opening a conversation, including metadata and messages.
       type: object
       required: [conversation, messages]
       properties:
-        conversation: { $ref: '#/components/schemas/ConversationSummary' }
+        conversation: {$ref: '#/components/schemas/ConversationSummary'}
         messages:
           type: array
-          description: All messages, sorted by newest first
-          items: { $ref: '#/components/schemas/Message' }
+          description: All messages, sorted newest first
+          items: {$ref: '#/components/schemas/Message'}
+          minItems: 0
+          maxItems: 1000000
+    ConversationResponse:
+      description: Conversation resource returned as a summary by POST /conversations and as detailed
+        conversation and messages by GET /conversations/{conversationId}.
+      oneOf:
+        - $ref: '#/components/schemas/ConversationSummary'
+        - $ref: '#/components/schemas/ConversationDetail'
