@@ -629,10 +629,22 @@ export default {
             <!-- Messages -->
             <div class="col-12 col-lg-8">
                 <div class="card shadow-sm">
-                    <div class="card-header">
+
+                    <div
+                        class="card-header d-flex align-items-center justify-content-between gap-2"
+                    >
                         <strong>
                             {{ selectedConversation?.name || 'Select a conversation' }}
                         </strong>
+                    
+                        <RouterLink
+                            v-if="selectedConversation?.type === 'group'"
+                            :to="`/groups/${selectedId}/settings`"
+                            class="btn btn-sm btn-outline-primary"
+                        >
+                            <i class="bi bi-gear me-1"></i>
+                            Group Settings
+                        </RouterLink>
                     </div>
 
                     <div
