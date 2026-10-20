@@ -1,0 +1,19 @@
+# 1: Build the Vue.js application
+FROM node:24 AS builder
+
+WORKDIR /app
+
+# Copy frontend source code and Yarn configuration
+COPY webui/ ./
+
+# Install dependencies and build the production frontend
+RUN corepack enable \
+    && yarn install --immutable \
+    && node node_modules/vite/bin/vite.js build
+
+# 2: Serve the static files with Nginx
+FROM nginx:stable-alpine
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
