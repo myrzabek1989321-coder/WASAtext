@@ -11,8 +11,12 @@ export default {
             messages: [],
             draft: '',
             replyingTo: null,
+
             reactionPickerId: null,
             reactingMessageId: null,
+            forwardPickerId: null,
+            forwardingMessageId: null,
+
 
             loading: false,
             loadingMessages: false,
@@ -99,6 +103,8 @@ export default {
 
         async openConversation(conversation) {
             this.replyingTo = null
+            this.forwardPickerId = null
+            this.reactionPickerId = null
             this.selectedId = conversation.id
             this.loadingMessages = true
 
@@ -159,6 +165,50 @@ export default {
             this.reactionPickerId =
                 this.reactionPickerId === messageId ? null : messageId
         },
+
+        toggleForwardPicker(messageId) {
+            // Open or close forwarding
+            this.forwardPickerId =
+                this.forwardPickerId === messageId ? null : messageId
+        
+            // Close emoji picker if open
+            this.reactionPickerId = null
+        },
+
+        async forwardMessage(message, targetConversationId) {
+            if (this.forwardingMessageId !== null) {
+                return
+            }
+        
+            if (!targetConversationId || targetConversationId === this.selectedId) {
+                return
+            }
+        
+            this.forwardingMessageId = message.id
+            this.error = ''
+        
+            try {
+                // Forward orig message to another conversation
+                await this.$axios.post(
+                    `/messages/${encodeURIComponent(message.id)}/forward`,
+                    {
+                        conversationId: targetConversationId,
+                    }
+                )
+                
+                // Close menu after successful forwarding
+                this.forwardPickerId = null
+                
+                // Refresh conversation list and latest previews
+                await this.loadConversations()
+                
+            } catch (error) {
+                this.error = this.getErrorMessage(error)
+            } finally {
+                this.forwardingMessageId = null
+            }
+        },
+
 
         async toggleReaction(message, emoji) {
             if (this.reactingMessageId !== null || !this.selectedId) {
@@ -576,6 +626,15 @@ export default {
                                     </div>
                                 </div>
 
+                                <!-- Forwarded message indicator -->
+                                <div
+                                    v-if="message.forwardedFromMessageId"
+                                    class="small fst-italic opacity-75 mb-1"
+                                >
+                                    <i class="bi bi-forward me-1"></i>
+                                    Forwarded
+                                </div>
+
                                 <div v-if="message.text" class="text-break">
                                     {{ message.text }}
                                 </div>
@@ -635,6 +694,86 @@ export default {
                                         {{ emoji }}
                                     </button>
                                 </div>
+                                
+                                <!-- Forward message button -->
+                                <button
+                                    type="button"
+                                    class="btn btn-link btn-sm p-0 ms-3 mt-2 text-decoration-none"
+                                    :class="message.sender?.id === userId
+                                        ? 'text-white'
+                                        : 'text-primary'"
+                                    @click="toggleForwardPicker(message.id)"
+                                >
+                                    <i class="bi bi-forward me-1"></i>
+                                    Forward
+                                </button>
+
+                                <!-- Forward destination picker -->
+                                <div
+                                    v-if="forwardPickerId === message.id"
+                                    class="card bg-body text-body shadow-sm mt-2"
+                                    style="min-width: 220px;"
+                                >
+                                    <div class="card-header small fw-semibold">
+                                        <i class="bi bi-forward me-1"></i>
+                                        Forward to
+                                    </div>
+                                
+                                    <div
+                                        class="list-group list-group-flush overflow-auto"
+                                        style="max-height: 220px;"
+                                    >
+                                        <template
+                                            v-for="conversation in conversations"
+                                            :key="conversation.id"
+                                        >
+                                            <button
+                                                v-if="conversation.id !== selectedId"
+                                                type="button"
+                                                class="list-group-item list-group-item-action
+                                                       d-flex align-items-center gap-2 text-start"
+                                                :disabled="forwardingMessageId !== null"
+                                                @click="forwardMessage(message, conversation.id)"
+                                            >
+                                                <i
+                                                    :class="conversation.type === 'group'
+                                                        ? 'bi bi-people'
+                                                        : 'bi bi-person'"
+                                                ></i>
+                                
+                                                <span class="text-truncate flex-grow-1">
+                                                    {{ conversation.name }}
+                                                </span>
+                                            
+                                                <span
+                                                    v-if="forwardingMessageId === message.id"
+                                                    class="spinner-border spinner-border-sm"
+                                                ></span>
+                                            </button>
+                                        </template>
+                                    
+                                        <div
+                                            v-if="conversations.filter(c => c.id !== selectedId).length === 0"
+                                            class="p-3 text-body-secondary small"
+                                        >
+                                            No other conversations available.
+                                        </div>
+                                    </div>
+                                
+                                    <div class="card-footer text-end">
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            @click="forwardPickerId = null"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+
+
+
+
 
                                 <!-- Existing reactions and their counts -->
                                 <div
