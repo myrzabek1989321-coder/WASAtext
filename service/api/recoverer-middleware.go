@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"runtime/debug"
 
+	"errors"
+
 	"git.sapienzaapps.it/fantasticcoffee/fantastic-coffee-decaffeinated/service/api/reqcontext"
 	"github.com/sirupsen/logrus"
 )
@@ -20,7 +22,8 @@ func (rt *_router) recovererMiddleware(next http.Handler) http.Handler {
 			if rvr := recover(); rvr != nil {
 				// We don't recover http.ErrAbortHandler: the response must be
 				// aborted, and it is not an error worth logging.
-				if rvr == http.ErrAbortHandler {
+				if recoveredErr, ok := rvr.(error); ok && errors.Is(recoveredErr, http.ErrAbortHandler) {
+
 					panic(rvr)
 				}
 
