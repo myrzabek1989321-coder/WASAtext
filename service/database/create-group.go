@@ -122,7 +122,7 @@ func (db *appdbimpl) CreateGroup(
 
 	group := ConversationSummary{
 		ID:      groupID,
-		Type:    "group",
+		Type:    conversationTypeGroup,
 		Name:    name,
 		Members: make([]User, 0),
 	}

@@ -51,7 +51,7 @@ func (db *appdbimpl) LeaveGroup(authID, groupID string) error {
 		return fmt.Errorf("find group: %w", err)
 	}
 
-	if conversationType != "group" {
+	if conversationType != conversationTypeGroup {
 		return ErrLeaveGroupNotFound
 	}
 

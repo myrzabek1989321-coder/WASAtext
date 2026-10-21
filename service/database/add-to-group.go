@@ -56,7 +56,7 @@ func (db *appdbimpl) AddToGroup(
 		return nil, fmt.Errorf("find group: %w", err)
 	}
 
-	if conversationType != "group" {
+	if conversationType != conversationTypeGroup {
 		return nil, ErrAddGroupNotFound
 	}
 

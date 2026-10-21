@@ -102,7 +102,7 @@ func (db *appdbimpl) GetMyConversations(authID string) ([]ConversationSummary, e
 			return nil, fmt.Errorf("read conversation: %w", err)
 		}
 
-		if conversation.Type == "group" &&
+		if conversation.Type == conversationTypeGroup &&
 			groupMime.Valid && len(groupPhoto) > 0 {
 
 			conversation.Photo = &Photo{

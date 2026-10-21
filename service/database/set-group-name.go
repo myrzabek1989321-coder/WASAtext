@@ -57,7 +57,7 @@ func (db *appdbimpl) SetGroupName(
 	if err != nil {
 		return ConversationSummary{}, fmt.Errorf("find group: %w", err)
 	}
-	if conversationType != "group" {
+	if conversationType != conversationTypeGroup {
 		return ConversationSummary{}, ErrGroupNotFound
 	}
 

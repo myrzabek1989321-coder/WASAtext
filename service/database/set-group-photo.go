@@ -54,7 +54,7 @@ func (db *appdbimpl) SetGroupPhoto(
 		return ConversationSummary{}, fmt.Errorf("find group: %w", err)
 	}
 
-	if conversationType != "group" {
+	if conversationType != conversationTypeGroup {
 		return ConversationSummary{}, ErrGroupNotFound
 	}
 
